@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎂 Chúc Mừng Sinh Nhật Em Yêu! 💖</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Password Screen -->
+    <div class="password-screen" id="passwordScreen">
+        <div class="password-container">
+            <div class="password-layout">
+                <!-- Left: Image Section -->
+                <div class="password-image-section">
+                    <img src="images/photo11.jpg" alt="Người yêu của anh" class="password-love-image">
+                    <div class="image-heart-decoration">
+                        <span class="small-heart">♥</span>
+                        <span class="small-heart">♥</span>
+                    </div>
+                </div>
+                
+                <!-- Right: Password Form -->
+                <div class="password-form-section">
+                    <div class="password-heart">
+                        <div class="heart-beat"></div>
+                    </div>
+                    <h2 class="password-title">🔒 Nhập Mật Khẩu Đặc Biệt 💝</h2>
+                    <p class="password-hint">Gợi ý: Ngày sinh của em (DDMMYY)</p>
+                    <input type="password" id="passwordInput" class="password-input" placeholder="Nhập mật khẩu..." maxlength="6">
+                    <button onclick="checkPassword()" class="password-btn">Mở Khóa ✨</button>
+                    <p class="password-error" id="passwordError"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Screen -->
+    <div class="loading-screen" id="loadingScreen">
+        <div class="heart-loader">
+            <div class="heart"></div>
+        </div>
+        <p class="loading-text">Đang chuẩn bị món quà đặc biệt...</p>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="bgMusic" loop>
+        <source src="audio/birthday-song.mp3" type="audio/mpeg">
+    </audio>
+    <button class="music-toggle" id="musicToggle">
+        <span class="music-icon">🔊</span>
+    </button>
+
+    <!-- Main Container -->
+    <div class="container" id="mainContainer">
+        
+        <!-- Section 1: Welcome -->
+        <section class="section welcome-section active">
+            <div class="content-wrapper">
+                <h1 class="main-title glowing-text">
+                    Happy Birthday
+                </h1>
+                <h2 class="sub-title elegant-text">To My Precious Love 💝</h2>
+                <p class="romantic-quote">"Mỗi ngày bên em là món quà tuyệt vời nhất của anh"</p>
+                <button class="btn-start" onclick="startExperience()">
+                    Mở Món Quà Đặc Biệt ✨
+                </button>
+            </div>
+            
+            <!-- 3D Canvas -->
+            <canvas id="scene3d" class="scene-3d"></canvas>
+        </section>
+
+        <!-- Section 2: Love Letter & Scratch Card -->
+        <section class="section memory-section">
+            <div class="memory-container">
+                <!-- Left: Love Letter -->
+                <div class="love-letter-box">
+                    <h2 class="letter-title">Gửi em, cô gái bé nhỏ của anh!</h2>
+                    <div class="letter-content">
+                        <p>Anh vẫn thương tự hỏi, một người nhỏ bé như em sao lại có sức mạnh lớn lào đến thế? Sức mạnh để chiến thắng tin anh, để mỗi suy nghĩ trong đầu anh đều là về em, để mỗi thức băng của anh chỉ có thế ân áo với về, nhưng điều là, anh là là "người đàn ông yếu bình nhất đế em"</p>
+                        <p class="letter-note">💌 Cào mạnh liện, tìm 64 sự kiện này nào →</p>
+                    </div>
+                </div>
+
+                <!-- Right: Scratch Card -->
+                <div class="scratch-card-box">
+                    <div class="scratch-container">
+                        <!-- Photos that appear after scratching -->
+                        <div class="scratch-photos" id="scratchPhotos">
+                            <img src="images/photo1.jpg" alt="Memory 1" class="scratch-photo active">
+                            <img src="images/photo2.jpg" alt="Memory 2" class="scratch-photo">
+                            <img src="images/photo3.jpg" alt="Memory 3" class="scratch-photo">
+                            <img src="images/photo4.jpg" alt="Memory 4" class="scratch-photo">
+                        </div>
+                        <!-- Scratch canvas overlay -->
+                        <canvas id="scratchCanvas" class="scratch-canvas"></canvas>
+                        <div class="scratch-hint" id="scratchHint">
+                            <p>👆 Cào để xem kỷ niệm 💕</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-next" onclick="nextSection()">Tiếp Theo →</button>
+        </section>
+
+        <!-- Section 3: Final Surprise -->
+        <section class="section surprise-section">
+            <h2 class="section-title">Món Quà Đặc Biệt 🎁</h2>
+            <div class="surprise-content">
+                <div class="gift-box" id="giftBox" onclick="openGift()">
+                    <div class="gift-lid"></div>
+                    <div class="gift-body"></div>
+                    <div class="gift-ribbon-v"></div>
+                    <div class="gift-ribbon-h"></div>
+                    <p class="gift-hint">Nhấn vào hộp quà!</p>
+                </div>
+                
+                <div class="gift-reveal" id="giftReveal">
+                    <div class="galaxy-container">
+                        <!-- Animated gradient background -->
+                        <div class="galaxy-gradient-bg"></div>
+                        
+                        <!-- Galaxy background canvas -->
+                        <canvas id="galaxyCanvas" class="galaxy-canvas"></canvas>
+                        
+                        <!-- Orbit Ring -->
+                        <svg class="orbit-ring" viewBox="0 0 800 400">
+                            <ellipse cx="400" cy="200" rx="300" ry="150" 
+                                     fill="none" 
+                                     stroke="rgba(255, 255, 255, 0.4)" 
+                                     stroke-width="2" 
+                                     stroke-dasharray="10 10"/>
+                        </svg>
+                        
+                        <!-- Orbiting Ball -->
+                        <div class="orbit-ball" id="orbitBall"></div>
+                        
+                        <!-- Sun in center -->
+                        <div class="sun-orb">
+                            <div class="sun-gradient"></div>
+                        </div>
+                        
+                        <!-- Orbiting photos -->
+                        <div class="orbit-container" id="orbitContainer"></div>
+                        
+                        <h3 class="galaxy-title">💖 Kỷ Niệm Của Chúng Mình 💖</h3>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-restart" onclick="restartExperience()">↻ Xem Lại Từ Đầu</button>
+        </section>
+
+    </div>
+
+    <!-- Confetti Container -->
+    <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+    <!-- Particles Background -->
+    <div id="particles-js"></div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/particles.js@2.0.0/particles.min.js"></script>
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="js/confetti.js"></script>
+    <script src="js/three-scene.js"></script>
+    <script src="js/galaxy-3d.js"></script>
+    <script src="js/script.js"></script>
+</body>
+</html>

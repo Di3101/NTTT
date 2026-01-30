@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Galaxy Birthday Effect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: #000;
+        }
+        
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #controls-ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            max-width: 300px;
+        }
+        
+        #controls-ui h2 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            color: #ff6b9d;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px 0;
+            width: 100%;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .info {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #ccc;
+        }
+        
+        .status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="controls-ui">
+        <h2>🌌 Galaxy Birthday</h2>
+        <button id="startTour">Start Camera Tour</button>
+        <button id="stopTour">Stop Tour</button>
+        <button id="resetCamera">Reset View</button>
+        <div class="info">
+            <div><span class="status"></span><strong>Controls:</strong></div>
+            <p>🖱️ Drag to rotate<br>
+            🔍 Scroll to zoom<br>
+            👆 Right-click to pan<br>
+            🎬 Auto tour visits photos</p>
+        </div>
+    </div>
+
+    <!-- Three.js and libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        // ==================== SCENE SETUP ====================
+        let scene, camera, renderer, controls;
+        let galaxyParticles, photoMeshes = [];
+        let isTourActive = false;
+        let currentTourIndex = 0;
+        
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000000);
+            scene.fog = new THREE.FogExp2(0x000000, 0.0008);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(
+                60,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                2000
+            );
+            camera.position.set(0, 100, 300);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 20;
+            controls.maxDistance = 600;
+            controls.enablePan = true;
+            controls.autoRotate = false;
+            controls.autoRotateSpeed = 0.3;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+            scene.add(ambientLight);
+            
+            const pointLight1 = new THREE.PointLight(0xff6b9d, 1, 200);
+            pointLight1.position.set(0, 0, 0);
+            scene.add(pointLight1);
+            
+            const pointLight2 = new THREE.PointLight(0x667eea, 0.5, 300);
+            pointLight2.position.set(100, 50, -100);
+            scene.add(pointLight2);
+            
+            // Create galaxy and photos
+            createSpiralGalaxy();
+            createFloatingPhotos();
+            
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.getElementById('startTour').addEventListener('click', startCameraTour);
+            document.getElementById('stopTour').addEventListener('click', stopCameraTour);
+            document.getElementById('resetCamera').addEventListener('click', resetCamera);
+            
+            // Start animation
+            animate();
+        }
+        
+        // ==================== SPIRAL GALAXY CREATION ====================
+        function createSpiralGalaxy() {
+            const particlesCount = 8000;
+            const positions = new Float32Array(particlesCount * 3);
+            const colors = new Float32Array(particlesCount * 3);
+            const sizes = new Float32Array(particlesCount);
+            
+            // Color palette for nebula effect
+            const colorPalette = [
+                new THREE.Color(0x9b59b6), // Purple
+                new THREE.Color(0xff6b9d), // Pink
+                new THREE.Color(0x667eea), // Blue
+                new THREE.Color(0x48dbfb), // Cyan
+                new THREE.Color(0xffffff), // White
+                new THREE.Color(0xf093fb)  // Light Pink
+            ];
+            
+            const branches = 5; // Number of spiral arms
+            
+            for (let i = 0; i < particlesCount; i++) {
+                // Calculate spiral position
+                const i3 = i * 3;
+                
+                // Radius - exponential distribution for more dense center
+                const radius = Math.pow(Math.random(), 0.5) * 180;
+                
+                // Branch angle - which spiral arm
+                const branchAngle = ((i % branches) / branches) * Math.PI * 2;
+                
+                // Spin angle - creates the spiral effect
+                const spinAngle = radius * 0.03;
+                
+                // Total angle
+                const angle = branchAngle + spinAngle;
+                
+                // Randomness for natural look
+                const randomX = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 15;
+                const randomY = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 15;
+                const randomZ = Math.pow(Math.random(), 3) * (Math.random() < 0.5 ? 1 : -1) * 15;
+                
+                // Calculate positions
+                positions[i3] = Math.cos(angle) * radius + randomX;
+                positions[i3 + 1] = randomY * 0.3; // Flatten galaxy
+                positions[i3 + 2] = Math.sin(angle) * radius + randomZ;
+                
+                // Colors - mix based on distance from center
+                const mixedColorIndex = Math.floor(Math.random() * colorPalette.length);
+                const color = colorPalette[mixedColorIndex].clone();
+                
+                // Fade outer particles
+                const fadeDistance = radius / 180;
+                color.multiplyScalar(1 - fadeDistance * 0.3);
+                
+                colors[i3] = color.r;
+                colors[i3 + 1] = color.g;
+                colors[i3 + 2] = color.b;
+                
+                // Particle sizes - smaller at edges
+                sizes[i] = Math.random() * 2.5 * (1 - fadeDistance * 0.5) + 0.5;
+            }
+            
+            // Create geometry
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            
+            // Shader material for glow effect
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    pixelRatio: { value: renderer.getPixelRatio() }
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute vec3 color;
+                    varying vec3 vColor;
+                    uniform float time;
+                    
+                    void main() {
+                        vColor = color;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        
+                        // Twinkle effect
+                        float twinkle = 1.0 + sin(time * 2.0 + position.x * 100.0) * 0.3;
+                        
+                        gl_PointSize = size * twinkle * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    varying vec3 vColor;
+                    
+                    void main() {
+                        // Circular particles
+                        vec2 center = gl_PointCoord - vec2(0.5);
+                        float dist = length(center);
+                        
+                        if (dist > 0.5) discard;
+                        
+                        // Soft glow
+                        float opacity = 1.0 - (dist * 2.0);
+                        opacity = pow(opacity, 2.5);
+                        
+                        gl_FragColor = vec4(vColor, opacity);
+                    }
+                `,
+                transparent: true,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            
+            galaxyParticles = new THREE.Points(geometry, material);
+            scene.add(galaxyParticles);
+        }
+        
+        // ==================== FLOATING PHOTOS ====================
+        function createFloatingPhotos() {
+            // Photo placeholder images (use your own images)
+            const photoUrls = [
+                'images/photo1.jpg',
+                'images/photo2.jpg',
+                'images/photo3.jpg',
+                'images/photo4.jpg'
+            ];
+            
+            const loader = new THREE.TextureLoader();
+            const photoCount = 10;
+            
+            for (let i = 0; i < photoCount; i++) {
+                // Random texture or placeholder
+                const textureUrl = photoUrls[i % photoUrls.length];
+                
+                // Create plane geometry
+                const geometry = new THREE.PlaneGeometry(15, 18);
+                
+                // Try to load texture, fallback to colored material
+                let material;
+                try {
+                    const texture = loader.load(
+                        textureUrl,
+                        undefined,
+                        undefined,
+                        () => {
+                            // On error, use colored plane
+                            material.map = null;
+                            material.color = new THREE.Color(
+                                Math.random(),
+                                Math.random(),
+                                Math.random()
+                            );
+                            material.needsUpdate = true;
+                        }
+                    );
+                    
+                    material = new THREE.MeshLambertMaterial({
+                        map: texture,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.95
+                    });
+                } catch (e) {
+                    // Fallback colored material
+                    material = new THREE.MeshLambertMaterial({
+                        color: new THREE.Color(
+                            0.3 + Math.random() * 0.5,
+                            0.3 + Math.random() * 0.5,
+                            0.5 + Math.random() * 0.5
+                        ),
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                }
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Position in spiral pattern
+                const angle = (i / photoCount) * Math.PI * 2;
+                const radius = 50 + Math.random() * 80;
+                const heightVariation = (Math.random() - 0.5) * 40;
+                
+                mesh.position.x = Math.cos(angle) * radius;
+                mesh.position.y = heightVariation;
+                mesh.position.z = Math.sin(angle) * radius;
+                
+                // Store initial data
+                mesh.userData.angle = angle;
+                mesh.userData.radius = radius;
+                mesh.userData.baseY = heightVariation;
+                mesh.userData.rotationSpeed = (Math.random() - 0.5) * 0.002;
+                mesh.userData.floatSpeed = Math.random() * 0.5 + 0.5;
+                
+                // Add glow border
+                const borderGeometry = new THREE.PlaneGeometry(16, 19);
+                const borderMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff6b9d,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const border = new THREE.Mesh(borderGeometry, borderMaterial);
+                border.position.z = -0.1;
+                mesh.add(border);
+                
+                scene.add(mesh);
+                photoMeshes.push(mesh);
+            }
+        }
+        
+        // ==================== CAMERA TOUR (TWEEN.JS) ====================
+        function startCameraTour() {
+            if (isTourActive) return;
+            
+            isTourActive = true;
+            currentTourIndex = 0;
+            controls.enabled = false;
+            
+            tourToNextPhoto();
+        }
+        
+        function tourToNextPhoto() {
+            if (!isTourActive || photoMeshes.length === 0) return;
+            
+            const photo = photoMeshes[currentTourIndex];
+            
+            // Calculate camera position (in front of photo)
+            const offset = 35;
+            const targetPos = new THREE.Vector3(
+                photo.position.x * 1.3,
+                photo.position.y + 10,
+                photo.position.z * 1.3
+            );
+            
+            const lookAtPos = photo.position.clone();
+            
+            // Tween camera position
+            new TWEEN.Tween(camera.position)
+                .to({
+                    x: targetPos.x,
+                    y: targetPos.y,
+                    z: targetPos.z
+                }, 2500)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .start();
+            
+            // Tween look-at target
+            new TWEEN.Tween(controls.target)
+                .to({
+                    x: lookAtPos.x,
+                    y: lookAtPos.y,
+                    z: lookAtPos.z
+                }, 2500)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .onComplete(() => {
+                    // Move to next photo after delay
+                    setTimeout(() => {
+                        currentTourIndex = (currentTourIndex + 1) % photoMeshes.length;
+                        if (isTourActive) {
+                            tourToNextPhoto();
+                        }
+                    }, 2000);
+                })
+                .start();
+        }
+        
+        function stopCameraTour() {
+            isTourActive = false;
+            controls.enabled = true;
+            TWEEN.removeAll();
+        }
+        
+        function resetCamera() {
+            stopCameraTour();
+            
+            new TWEEN.Tween(camera.position)
+                .to({ x: 0, y: 100, z: 300 }, 1500)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+            
+            new TWEEN.Tween(controls.target)
+                .to({ x: 0, y: 0, z: 0 }, 1500)
+                .easing(TWEEN.Easing.Cubic.Out)
+                .start();
+        }
+        
+        // ==================== ANIMATION LOOP ====================
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.0005;
+            
+            // Update Tween.js
+            TWEEN.update();
+            
+            // Update controls
+            controls.update();
+            
+            // Rotate galaxy slowly
+            if (galaxyParticles) {
+                galaxyParticles.rotation.y = time * 0.05;
+                galaxyParticles.material.uniforms.time.value = time;
+            }
+            
+            // Animate photos - billboard + float
+            photoMeshes.forEach((mesh, index) => {
+                // Billboard effect - face camera
+                mesh.lookAt(camera.position);
+                
+                // Gentle floating motion
+                const floatOffset = Math.sin(time * mesh.userData.floatSpeed + index) * 3;
+                mesh.position.y = mesh.userData.baseY + floatOffset;
+                
+                // Subtle rotation around center
+                const orbitTime = time * 0.1;
+                const angle = mesh.userData.angle + orbitTime;
+                mesh.position.x = Math.cos(angle) * mesh.userData.radius;
+                mesh.position.z = Math.sin(angle) * mesh.userData.radius;
+            });
+            
+            renderer.render(scene, camera);
+        }
+        
+        // ==================== WINDOW RESIZE ====================
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // ==================== START ====================
+        init();
+    </script>
+</body>
+</html>
